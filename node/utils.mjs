@@ -89,4 +89,27 @@ export async function makeDir(dirPath, callback) {
   await mkdir(dirPath, { recursive: true });
 }
 
+export const TYPE_BYTES_LENGTH = {
+  "rgb": 3,
+  "rgba": 4,
+  "uint8": 1,
+  "int8": 1,
+  "uint16": 2,
+  "int16": 2,
+  "uint32": 4,
+  "int32": 4,
+  "float32": 4
+}
+
+export function parseParams(argvs) {
+  return Object.fromEntries(
+    argvs.reduce((pre, item) => {
+      if(item.startsWith("--")) {
+        return [...pre, item.slice(2).split("=")];
+      }
+      return pre;
+    }, [])
+  )
+}
+
 
