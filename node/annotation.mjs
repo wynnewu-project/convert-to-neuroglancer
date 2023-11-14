@@ -25,14 +25,24 @@ export class Annotation {
    * 
    * @param {*} infoFile - excel or csv
    */
-  constructor(infoFile, resolution=[ 1e-9, 1e-9, 1e-9 ], upperBound=[0, 0, 0], infoSpec={}) {
+  constructor({ 
+    infoFile, 
+    resolution=[ 1e-9, 1e-9, 1e-9 ], 
+    upperBound=[0, 0, 0], 
+    infoSpec={},
+    generateIndex=true
+  }) {
     if( new.target === Annotation) {
       throw new Error("本类不能实例化")
     }
     this.infoFile = infoFile;
     this.upperBound = upperBound;
     this.resolution = resolution;
-    this.infoSpec = infoSpec;
+    this.generateIndex = generateIndex;
+    this.infoContent = {
+      ...this.infoContent,
+      ...infoSpec
+    }
   }
 
   /**
@@ -95,10 +105,12 @@ export class Annotation {
     await makeDir(spatial0Dir);
     writeFile(`${spatial0Dir}/0_0_0`, encodedAnnotations);
 
-    const byIdDir = `${dirPath}/by_id`;
-    await makeDir(byIdDir)
-    for(let annotation of annotations.values()) {
-      writeFile(`${byIdDir}/${annotation.id}`, this.encodingAnnotationIndex(annotation))
+    if(this.generateIndex) {
+      const byIdDir = `${dirPath}/by_id`;
+      await makeDir(byIdDir)
+      for(let annotation of annotations.values()) {
+        await writeFile(`${byIdDir}/${annotation.id}`, this.encodingAnnotationIndex(annotation))
+      }
     }
 
     this.infoContent["annotation_type"] = this.type;
@@ -108,10 +120,6 @@ export class Annotation {
       "x": [ this.resolution[0], "m" ],
       "y": [ this.resolution[1], "m" ],
       "z": [ this.resolution[2], "m" ]
-    }
-    this.infoContent = {
-      ...this.infoContent,
-      ...this.infoSpec
     }
     writeFile(`${dirPath}/info`, JSON.stringify(this.infoContent))
   }
