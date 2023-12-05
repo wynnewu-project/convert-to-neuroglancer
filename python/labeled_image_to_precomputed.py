@@ -12,11 +12,11 @@ import json
 
 def parse_command_line(argv):
   parser = argparse.ArgumentParser()
-  parser.add_argument("image")
-  parser.add_argument("-r", default=[1,1,1])
-  parser.add_argument("-d", default="")
-  parser.add_argument("-width", default=0)
-  parser.add_argument("-height", default=0)
+  parser.add_argument("image", help="file path for image")
+  parser.add_argument("-r", default="1,1,1", help="resolution")
+  parser.add_argument("-d", default="", help="output folder")
+  parser.add_argument("-width", default=0, help="target width if you want to resize image")
+  parser.add_argument("-height", default=0, help="target height if you want to resize image")
   args = parser.parse_args(argv[1:])
   return args
 
