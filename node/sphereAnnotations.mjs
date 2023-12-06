@@ -1,6 +1,4 @@
 import { Annotation } from "./annotation.mjs";
-import { open } from "node:fs/promises";
-import { TYPE_BYTES_LENGTH, parseParams } from "./utils.mjs";
 
 export class SphereAnnotations extends Annotation {
   constructor(...args) {
@@ -8,47 +6,42 @@ export class SphereAnnotations extends Annotation {
     this.type = "SPHERE";
   }
 
-  get bytesPerAnnotation() {
-    const { properties=[] } = this.infoContent;
-    let bytes = 3 * 4;
-    for(let propery of properties) {
-      const { type } = propery;
-      bytes += TYPE_BYTES_LENGTH[type];
-    }
-    return bytes;
-  }
-  
-  async getRawData() {
-    const rawData = new Map();
-    const file = await open(this.infoFile);
-    let count = 0;
-    for await (const annotation of file.readLines()) {
-      count += 1;
-      const sphere = annotation.split(" ").map(x => Number(x))
-      rawData.set(count, { id: count, sphere });
-    }
-    file.close();
-    return rawData;
+  get basicBytesPerAnnotation() {
+    return 3 * 4;
   }
 
-  encodingSingleAnnotation(dv, offset, sphereItem) {
-    const { sphere } = sphereItem;
-    for(let i of sphere) {
-      dv.setFloat32(offset, i, true);
-      offset += 4;
+  parseProperties(params_count) {
+    if(params_count >=4) {
+      this.infoContent.properties.push({
+        "id": "sphereRadius",
+        "type": "float32"
+      })
     }
-    return offset;
+    if(params_count > 4) {
+      this.infoContent.properties.push({
+        "id": "sphereColor",
+        "type": "rgba"
+      });
+      return;
+    }
+  }
+
+  parseAnnotation(annotation) {
+    const parseResult = {}
+    const [x, y, z, radius, r, g, b, a=255] = annotation;
+    parseResult["float32"] = [x, y, z];
+    if(radius) {
+      parseResult["float32"].push(radius);
+    }
+    if(r!==undefined) {
+      parseResult["uint8"] = [ r, g, b, a];
+    }
+    console.log(parseResult)
+    return parseResult;
   }
 }
 
-const args = parseParams(process.argv.slice(2));
-const { infoFile, upperBound, properties='{}', targetDir="sphere" } = args;
-const sphereAnnotations = new SphereAnnotations({
-  infoFile,
-  upperBound: JSON.parse(upperBound),
-  infoSpec: {
-    properties: JSON.parse(properties)
-  }
-})
-sphereAnnotations.writeToPrecomputed(targetDir);
+Annotation.run(SphereAnnotations);
+
+
 

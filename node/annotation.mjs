@@ -1,6 +1,30 @@
-import { readWorkbookFromLocalFile, makeDir } from "./utils.mjs";
-import { writeFile } from "node:fs/promises";
+import { readWorkbookFromLocalFile, makeDir} from "./utils.mjs";
+import { writeFile, open } from "node:fs/promises";
 import { cwd } from "node:process";
+import { parseParams } from "./utils.mjs";
+import path from "node:path";
+
+export const TYPE_BYTES_LENGTH = {
+  "rgb": 3,
+  "rgba": 4,
+  "uint8": 1,
+  "int8": 1,
+  "uint16": 2,
+  "int16": 2,
+  "uint32": 4,
+  "int32": 4,
+  "float32": 4
+}
+
+export const TYPE_HANDLER = {
+  "int8": "setInt8",
+  "uint8": "setUint8",
+  "uint16": "setUint16",
+  "int16": "setInt16",
+  "uint32": "setUint32",
+  "int32": "setInt32",
+  "float32": "setFloat32"
+}
 
 export class Annotation {
 
@@ -23,62 +47,122 @@ export class Annotation {
 
   /**
    * 
-   * @param {*} infoFile - excel or csv
+   * @param {*} infoFile - excel, csv, txt, swc
    */
   constructor({ 
     infoFile, 
+    targetDir,
     resolution=[ 1e-9, 1e-9, 1e-9 ], 
     upperBound=[0, 0, 0], 
+    lowerBound=[0, 0, 0],
     infoSpec={},
-    generateIndex=true
+    generateIndex=false
   }) {
     if( new.target === Annotation) {
       throw new Error("本类不能实例化")
     }
     this.infoFile = infoFile;
-    this.upperBound = upperBound;
     this.resolution = resolution;
     this.generateIndex = generateIndex;
+    this.targetDir = targetDir;
     this.infoContent = {
       ...this.infoContent,
+      lower_bound: lowerBound,
+      upper_bound: upperBound,
       ...infoSpec
     }
+    this.infoContent["spatial"][0]["chunk_size"] = upperBound;
   }
 
   /**
    * Implement these methods in subclasses 
-   * 
-   * - parseSourceData(workbook, rawData) {} 
-   * - encodingSingleAnnotation() {} 
-   * - get bytesPerAnnotation() {}
    */ 
+  parseAnnotation(annotation) {
+    return {
+      "float32": annotation
+    }
+  }
+  parseProperties(annotationParamsLength) {}
+  encodingSingleAnnotation() {}
+  get basicBytesPerAnnotation() { return 0;}
 
-  async getRawData() {
-    const rawData = new Map();
+  getBytesPerAnnotation() {
+    const { properties=[] } = this.infoContent;
+    let bytes = this.basicBytesPerAnnotation;
+    for(let propery of properties) {
+      const { type } = propery;
+      bytes += TYPE_BYTES_LENGTH[type];
+    }
+    return bytes;
+  }
+
+
+  async getRawDataFromExcel(rawData) {
     await readWorkbookFromLocalFile(this.infoFile, (workbook) => {
       let sheetObj = workbook.Sheets.Sheet1;
       let [start_col, start_row, end_col, end_row] = sheetObj['!ref'].match(/([A-Z]*)([0-9]*):([A-Z]*)([0-9]*)/).slice(1);
-      this.parseSourceData({
-        start_col,
-        end_col,
-        start_row,
-        end_row
-      }, sheetObj,  rawData);
+      let count = 0;
+      for(let row = Number(start_row); row <= Number(end_row); row++) {
+        count += 1;
+        const annotation = [];
+        console.log('row', row)
+        for(let col = start_col.charCodeAt(0); col <= end_col.charCodeAt(0); col++) {
+          const col_tag = String.fromCharCode(col)
+          annotation.push(sheetObj[col_tag + row].v)
+        }
+        rawData.set(count, { 
+          id: count,
+          paramsCount: annotation.length,
+          annotation: this.parseAnnotation(annotation)
+        });
+      }
     });
-    return rawData;
   }
+
+
+  async getRawDataFromText(rawData) {
+    const file = await open(this.infoFile);
+    let count = 0;
+    for await (const line of file.readLines()) {
+      count += 1;
+      const annotation = line.split(/[,\s|\t;]/).map(x => Number(x))
+      rawData.set(count, { 
+        id: count,
+        paramsCount: annotation.length,
+        annotation: this.parseAnnotation(annotation)
+      });
+    }
+    file.close();
+  }
+
+  encodingSingleAnnotation(dv, offset, annotation) {
+    for(let [dataType, items] of Object.entries(annotation)) {
+      for(let i of items) {
+        if(dataType.endsWith("int8")) {
+          dv[TYPE_HANDLER[dataType]](offset, i);
+        } else {
+          dv[TYPE_HANDLER[dataType]](offset, i, true);
+        }
+        offset += TYPE_BYTES_LENGTH[dataType];
+      }
+    }
+    return offset;
+  }
+
+
 
   encodingAnnotation(rawDatas) {
     let offset = 0;
     let ids = [];
     const rawAnnotations = rawDatas.values();
     const count = rawDatas.size;
-    const arrayBuffer = new ArrayBuffer(8 + count * (this.bytesPerAnnotation + 8));
+    console.log('bytes', this.getBytesPerAnnotation())
+    const arrayBuffer = new ArrayBuffer(8 + count * (this.getBytesPerAnnotation() + 8));
     const dv = new DataView(arrayBuffer);
     dv.setBigUint64(0, BigInt(count), true);
     offset = 8;
-    for(let annotation of rawAnnotations) {
-      const { id } = annotation;
+    for(let item of rawAnnotations) {
+      const { id, annotation } = item;
       ids.push(id);
       offset = this.encodingSingleAnnotation(dv, offset, annotation);
     }
@@ -90,17 +174,24 @@ export class Annotation {
   }
 
   encodingAnnotationIndex(annotation) {
-    const buffer = new ArrayBuffer(this.bytesPerAnnotation);
+    const buffer = new ArrayBuffer(this.getBytesPerAnnotation());
     const dv = new DataView(buffer);
     this.encodingSingleAnnotation(dv, 0, annotation);
     return dv;
   }
 
-  async writeToPrecomputed(targetDir) {
-    const annotations = await this.getRawData();
+  async writeToPrecomputed() {
+    const annotations = new Map();
+    const extname = path.extname(this.infoFile);
+    if(extname === ".xlsx" || extname === ".xls") {
+      await this.getRawDataFromExcel(annotations);
+    } else {
+      await this.getRawDataFromText(annotations);
+    }
+    this.parseProperties(annotations.get(1).paramsCount);
     const encodedAnnotations = this.encodingAnnotation(annotations);
 
-    const dirPath = `${cwd()}/${targetDir}`;
+    const dirPath = `${cwd()}/${this.targetDir ?? `annotations_${this.type}`}`;
     const spatial0Dir = `${dirPath}/spatial0`;
     await makeDir(spatial0Dir);
     writeFile(`${spatial0Dir}/0_0_0`, encodedAnnotations);
@@ -114,8 +205,6 @@ export class Annotation {
     }
 
     this.infoContent["annotation_type"] = this.type;
-    this.infoContent["spatial"][0]["chunk_size"] = this.upperBound;
-    this.infoContent["upper_bound"] = this.upperBound;
     this.infoContent["dimensions"] = {
       "x": [ this.resolution[0], "m" ],
       "y": [ this.resolution[1], "m" ],
@@ -124,7 +213,20 @@ export class Annotation {
     writeFile(`${dirPath}/info`, JSON.stringify(this.infoContent))
   }
 
-  async test() {
-    console.log(await this.getRawData());
+  static run(AnnotationType) {
+    const helpInfo = `
+  --infoFile: Input file's path
+  --resolution: resolution in 'm'
+  --lowerBound: Array of numbers of length rank specifying the lower bound.
+  --upperBound: Array of numbers of length rank specifying the exclusive upper bound.All annotation geometry should be contained within the bounding box defined by lower_bound and upper_bound.
+  --targetDir: Output folder
+  --generateIndex: Whether to generate encoded respresentation for each single annotation and save it in a separate file. It will be used by Neuroglancer when selecting or hovering over an annotation.
+    `
+    const args = parseParams(process.argv.slice(2), helpInfo, true);
+    if(JSON.stringify(args) === "{}" ) {
+      return;
+    }
+    const annotation = new AnnotationType(args);
+    annotation.writeToPrecomputed()
   }
 }

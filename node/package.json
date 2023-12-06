@@ -1,0 +1,10 @@
+{
+  "name": "neuroglancer-annotations-convertion",
+  "version": "0.0.0",
+  "description": "scripts for converting datas to Neuroglancer annotations",
+  "dependencies": {
+    "@ant-design/colors": "^7.0.0",
+    "jstat": "^1.9.6",
+    "xlsx": "^0.18.5"
+  }
+}
