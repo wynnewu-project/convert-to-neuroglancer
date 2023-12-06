@@ -101,11 +101,25 @@ export const TYPE_BYTES_LENGTH = {
   "float32": 4
 }
 
-export function parseParams(argvs) {
+export function parseParams(argvs, helpInfo="", params=false) {
+  if(params && !argvs.length) {
+    console.log("Help: \n", helpInfo);
+  }
   return Object.fromEntries(
     argvs.reduce((pre, item) => {
       if(item.startsWith("--")) {
-        return [...pre, item.slice(2).split("=")];
+        const [option, value] = item.slice(2).split("=");
+        if(option === "help") {
+          console.log("Help: \n", helpInfo);
+        } else {
+          let v;
+          try {
+            v = JSON.parse(value);
+          } catch (e) {
+            v = value;
+          }
+          return [...pre, [option, v]];
+        }
       }
       return pre;
     }, [])
