@@ -1,47 +1,46 @@
 import { Annotation } from "./annotation.mjs";
+import { linearColorAlpha, parseParams } from "./utils.mjs";
 
 export class LineAnnotations extends Annotation {
 
-  constructor(...args) {
-    super(...args);
+  constructor(args) {
+    super(args);
     this.type = "LINE"
   }
 
 
-  get bytesPerAnnotation() {
+  get basicBytesPerAnnotation() {
     return 2 * 3 * 4;
   }
 
-  encodingSingleAnnotation(dv, offset, line) {
-    const { point1, point2 } = line;
-    for(let p of [...point1.position, ...point2.position]) {
-      dv.setFloat32(offset, p, true);
-      offset += 4;
+  parseProperties(params_count) {
+    if(params_count >= 7) {
+      this.infoContent.properties.push({
+        "id": "lineWidth",
+        "type": "float32"
+      })
     }
-    return offset
+    if(params_count > 7) {
+      this.infoContent.properties.push({
+        "id": "lineColor",
+        "type": "rgba"
+      })
+    }
   }
 
-  parseSourceData(indices, sheetObj, rawData) {
-    const { start_row=0, end_row=1, end_col="F"} = indices;
-    if(end_col.charCodeAt(0) < "F".charCodeAt(0)) {
-      throw new Error("至少需要两个端点的坐标");
+  parseAnnotation(annotation) {
+    console.log(annotation)
+    const parseResult = {};
+    const [x1, y1, z1, x2, y2, z2, width, r, g, b, a=255] = annotation;
+    parseResult["float32"] = [x1, y1, z1, x2, y2, z2];
+    if(width) {
+      parseResult["float32"].push(radius);
     }
-    let count = 0;
-    for(let i = Number(start_row); i <= Number(end_row); i++) {
-      count += 1;
-      const line = {
-        id: count,
-        point1: {
-          position: [sheetObj[`A${i}`].v, sheetObj[`B${i}`].v, sheetObj[`C${i}`].v]
-        },
-        point2: {
-          position: [sheetObj[`D${i}`].v, sheetObj[`E${i}`].v, sheetObj[`F${i}`].v]
-        }
-      }
-      if(end_col === "G") {
-        line.value = sheetObj[`G${i}`].v;
-      }
-      rawData.set(count, line);
+    if(r!==undefined) {
+      parseResult["uint8"] = [ r, g, b, a];
     }
+    return parseResult;
   }
 }
+
+Annotation.run(LineAnnotations);

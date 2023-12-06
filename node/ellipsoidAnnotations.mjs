@@ -1,43 +1,36 @@
 import { Annotation } from "./annotation.mjs";
 
 export class EllipsoidAnnotation extends Annotation {
-  constructor(radii=[10, 10, 10], ...args) {
-    super(...args);
+  constructor({radii=10, ...args}) {
+    super(args);
     this.type = "ELLIPSOID";
     this.radii = radii;
   }
 
-  get bytesPerAnnotation() {
+  get basicBytesPerAnnotation() {
     return 2 * 3 * 4;
   }
 
-  encodingSingleAnnotation(dv, offset, ellipsolid) {
-    const { position, radii } = ellipsolid; 
-    const radiiFinal = radii ?? this.radii;  
-    console.log('radii', radiiFinal);
-    [...position, ...radiiFinal ].forEach(p  => {
-      dv.setFloat32(offset, p, true);
-      offset += 4;
-    })
-    return offset;
+
+  parseProperties(params_count) {
+    if(params_count > 6) {
+      this.infoContent.properties.push({
+        "id": "ellipsoidColor",
+        "type": "rgba"
+      });
+    }
+  }
+  parseAnnotation(annotation) {
+    const [x, y, z, rx, ry, rz, r, g, b, a=255] = annotation; 
+    const parseResult = {
+      "float32": [x, y, z, ...[rx, ry, rz].map(x => x > 0 ? x : this.radii)]
+    } 
+    if(r !== undefined) {
+      parseResult["uint8"] = [r, g, b, a];
+    }
+    return parseResult;
   }
 
-  parseSourceData(indices, sheetObj, rawData) {
-    const { start_row=0, end_row=1, end_col="F" } = indices;
-    if(end_col.charCodeAt(0) < "C".charCodeAt(0)) {
-      throw new Error("至少需要一个点三维坐标")
-    }
-    let count = 0;
-    for(let i = Number(start_row); i <= Number(end_row); i++) {
-      count +=1;
-      const ellipsolid = {
-        id: count,
-        position: [sheetObj[`A${i}`].v, sheetObj[`B${i}`].v, sheetObj[`C${i}`].v]
-      }
-      if(end_col === "F") {
-        ellipsolid.radii = [ sheetObj[`D${i}`].v, sheetObj[`E${i}`].v, sheetObj[`F${i}`].v];
-      }
-      rawData.set(count, ellipsolid );
-    }
-  }
 }
+
+Annotation.run(EllipsoidAnnotation);

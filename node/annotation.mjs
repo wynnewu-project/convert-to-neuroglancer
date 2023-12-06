@@ -105,7 +105,6 @@ export class Annotation {
       for(let row = Number(start_row); row <= Number(end_row); row++) {
         count += 1;
         const annotation = [];
-        console.log('row', row)
         for(let col = start_col.charCodeAt(0); col <= end_col.charCodeAt(0); col++) {
           const col_tag = String.fromCharCode(col)
           annotation.push(sheetObj[col_tag + row].v)
@@ -156,7 +155,6 @@ export class Annotation {
     let ids = [];
     const rawAnnotations = rawDatas.values();
     const count = rawDatas.size;
-    console.log('bytes', this.getBytesPerAnnotation())
     const arrayBuffer = new ArrayBuffer(8 + count * (this.getBytesPerAnnotation() + 8));
     const dv = new DataView(arrayBuffer);
     dv.setBigUint64(0, BigInt(count), true);

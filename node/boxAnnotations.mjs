@@ -9,13 +9,6 @@ export class BoxAnnotation extends Annotation {
   get basicBytesPerAnnotation() {
     return 2 * 3 * 4;
   }
-
-  parseAnnotation(annotation) {
-    return {
-      "float32": annotation
-    }
-  }
-
 }
 
 Annotation.run(BoxAnnotation);

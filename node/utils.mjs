@@ -85,7 +85,6 @@ export function getColorLevel(numArray, value) {
 }
 
 export async function makeDir(dirPath, callback) {
-  console.log('dirname: ', dirPath)
   await mkdir(dirPath, { recursive: true });
 }
 

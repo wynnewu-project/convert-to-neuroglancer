@@ -36,7 +36,6 @@ export class SphereAnnotations extends Annotation {
     if(r!==undefined) {
       parseResult["uint8"] = [ r, g, b, a];
     }
-    console.log(parseResult)
     return parseResult;
   }
 }
