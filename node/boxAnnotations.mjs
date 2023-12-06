@@ -1,8 +1,8 @@
 import { Annotation } from "./annotation.mjs";
 
 export class BoxAnnotation extends Annotation {
-  constructor(...args) {
-    super(...args);
+  constructor(args) {
+    super(args);
     this.type = "AXIS_ALIGNED_BOUNDING_BOX";
   }
 

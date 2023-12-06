@@ -1,8 +1,8 @@
 import { Annotation } from "./annotation.mjs";
 
 export class SphereAnnotations extends Annotation {
-  constructor(...args) {
-    super(...args);
+  constructor(args) {
+    super(args);
     this.type = "SPHERE";
   }
 
