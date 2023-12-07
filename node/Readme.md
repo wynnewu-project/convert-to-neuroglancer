@@ -147,7 +147,7 @@ You need to provide a center position and the angles of rotation of the three ax
 
 ||x|y|z|x-axis_angle_x|x-axis_angle_y|x-axis_angle_z|y-axis_angle_x|y-axis_angle_y|y-axis_angle_z|z-axis_angle_x|z-axis_angle_y|z-axis_angle_z|
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-|Required|*|*|*|*|*|*|*|*|*|*|*|*|
+|Required|Y|Y|Y|Y|Y|Y|Y|Y|Y|Y|Y|Y|
 
 - The center position is (x, y, z)
 - The rotation of the x-axis of the ellipsoid is (x-axis_angle_x, x-axis_angle_y, x-axis_angle_z)
