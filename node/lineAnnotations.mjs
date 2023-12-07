@@ -29,7 +29,6 @@ export class LineAnnotations extends Annotation {
   }
 
   parseAnnotation(annotation) {
-    console.log(annotation)
     const parseResult = {};
     const [x1, y1, z1, x2, y2, z2, width, r, g, b, a=255] = annotation;
     parseResult["float32"] = [x1, y1, z1, x2, y2, z2];
