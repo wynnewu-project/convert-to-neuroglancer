@@ -21,10 +21,10 @@ node [scripts] [options]
 Required options:
 --infoFile: File path to store the defined information of annotations 
 --resolution: resolution in unit 'm'
---upperBound: Array of numbers of length rank specifying the exclusive upper bound.All annotation geometry should be contained within the bounding box defined by lower_bound and upper_bound.
 
 Optional Options:
 --lowerBound: Array of numbers of length rank specifying the lower bound. Default is [0,0,0]
+--upperBound: Array of numbers of length rank specifying the exclusive upper bound.All annotation geometry should be contained within the bounding box defined by lower_bound and upper_bound.Default is [1000, 1000, 1000]
 --targetDir: Output folder.Default is annotaion_${type}
 --generateIndex: Whether to generate encoded respresentation for each single annotation and save it in a separate file. It will be used by Neuroglancer when selecting or hovering over an annotation. Default is false.
 ```

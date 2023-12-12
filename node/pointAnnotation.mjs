@@ -1,9 +1,10 @@
 import { Annotation } from "./annotation.mjs";
 
-export class SphereAnnotations extends Annotation {
-  constructor(args) {
+export class PointAnnotation extends Annotation {
+  constructor({ radius, ...args}) {
     super(args);
-    this.type = "SPHERE";
+    this.type = "POINT";
+    this.radius = radius;
   }
 
   get basicBytesPerAnnotation() {
@@ -12,25 +13,23 @@ export class SphereAnnotations extends Annotation {
 
   parseAnnotation(annotation) {
     const [x, y, z, radius, r, g, b, a=255] = annotation;
+    const pointRadius = radius > 0 ? radius : this.radius;
     let parseResult = [x, y, z].map(value => ({ type: "float32", value }));
-    parseResult["float32"] = [x, y, z];
-    if(radius) {
+    if(pointRadius) {
       parseResult = [
         ...parseResult,
-        ...this.parseProperties("sphereRadius", [radius])
+        ...this.parseProperties("pointRadius", [pointRadius])
       ]
     }
+
     if(r!==undefined) {
       parseResult = [
         ...parseResult,
-        ...this.parseProperties("sphereColor", [r,g,b,a], "rgba")
+        ...this.parseProperties("pointColor", [r,g,b,a], "rgba")
       ]
+
     }
     return parseResult;
   }
 }
-
-Annotation.run(SphereAnnotations);
-
-
-
+Annotation.run(PointAnnotation);

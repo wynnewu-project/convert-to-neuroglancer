@@ -13,30 +13,20 @@ export class LineAnnotations extends Annotation {
     return 2 * 3 * 4;
   }
 
-  parseProperties(params_count) {
-    if(params_count >= 7) {
-      this.infoContent.properties.push({
-        "id": "lineWidth",
-        "type": "float32"
-      })
-    }
-    if(params_count > 7) {
-      this.infoContent.properties.push({
-        "id": "lineColor",
-        "type": "rgba"
-      })
-    }
-  }
-
   parseAnnotation(annotation) {
-    const parseResult = {};
     const [x1, y1, z1, x2, y2, z2, width, r, g, b, a=255] = annotation;
-    parseResult["float32"] = [x1, y1, z1, x2, y2, z2];
+    let parseResult = [x1, y1, z1, x2, y2, z2].map(value => ({ type: "float32", value}));
     if(width) {
-      parseResult["float32"].push(radius);
+      parseResult = [
+        ...parseResult,
+        ...this.parseProperties("lineWidth", [width])
+      ]
     }
     if(r!==undefined) {
-      parseResult["uint8"] = [ r, g, b, a];
+      parseResult = [
+        ...parseResult,
+        ...this.parseProperties("lineColor", [r,g,b,a], "rgba")
+      ]
     }
     return parseResult;
   }

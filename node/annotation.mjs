@@ -53,7 +53,7 @@ export class Annotation {
     infoFile, 
     targetDir,
     resolution=[ 1e-9, 1e-9, 1e-9 ], 
-    upperBound=[0, 0, 0], 
+    upperBound=[1000, 1000, 1000], 
     lowerBound=[0, 0, 0],
     infoSpec={},
     generateIndex=false
@@ -78,13 +78,9 @@ export class Annotation {
    * Implement these methods in subclasses 
    */ 
   parseAnnotation(annotation) {
-    return {
-      "float32": annotation
-    }
+    return annotation.map(value => ({type: "float32", value}))
   }
-  parseProperties(annotationParamsLength) {}
   encodingSingleAnnotation() {}
-  get basicBytesPerAnnotation() { return 0;}
 
   getBytesPerAnnotation() {
     const { properties=[] } = this.infoContent;
@@ -95,6 +91,17 @@ export class Annotation {
     }
     return bytes;
   }
+
+  parseProperties(propertyId, properties, type="float32") {
+    if(!this.infoContent.properties.filter(item => item.id === propertyId).length) {
+      this.infoContent.properties.push({
+        "id": propertyId,
+        "type": type
+      })
+    }
+    return properties.map(value => ({ type: type.startsWith("rgb") ? "uint8" : type, value }));
+  }
+
 
 
   async getRawDataFromExcel(rawData) {
@@ -135,15 +142,14 @@ export class Annotation {
   }
 
   encodingSingleAnnotation(dv, offset, annotation) {
-    for(let [dataType, items] of Object.entries(annotation)) {
-      for(let i of items) {
-        if(dataType.endsWith("int8")) {
-          dv[TYPE_HANDLER[dataType]](offset, i);
-        } else {
-          dv[TYPE_HANDLER[dataType]](offset, i, true);
-        }
-        offset += TYPE_BYTES_LENGTH[dataType];
+    for(let item of annotation) {
+      const { type, value } = item;
+      if(type.endsWith("int8")) {
+        dv[TYPE_HANDLER[type]](offset, value);
+      } else {
+        dv[TYPE_HANDLER[type]](offset, value, true);
       }
+      offset += TYPE_BYTES_LENGTH[type];
     }
     return offset;
   }
@@ -186,7 +192,6 @@ export class Annotation {
     } else {
       await this.getRawDataFromText(annotations);
     }
-    this.parseProperties(annotations.get(1).paramsCount);
     const encodedAnnotations = this.encodingAnnotation(annotations);
 
     const dirPath = `${cwd()}/${this.targetDir ?? `annotations_${this.type}`}`;
@@ -213,12 +218,15 @@ export class Annotation {
 
   static run(AnnotationType) {
     const helpInfo = `
-  --infoFile: Input file's path
-  --resolution: resolution in 'm'
-  --lowerBound: Array of numbers of length rank specifying the lower bound.
-  --upperBound: Array of numbers of length rank specifying the exclusive upper bound.All annotation geometry should be contained within the bounding box defined by lower_bound and upper_bound.
-  --targetDir: Output folder
-  --generateIndex: Whether to generate encoded respresentation for each single annotation and save it in a separate file. It will be used by Neuroglancer when selecting or hovering over an annotation.
+Required options:
+--infoFile: File path to store the defined information of annotations 
+--resolution: physical resolution in unit 'm'
+
+Optional Options:
+--lowerBound: Array of numbers of length rank specifying the lower bound in the units specified by resolution. Default is [0,0,0]
+--upperBound: Array of numbers of length rank specifying the exclusive upper bound in the units specified by resolution. All annotation geometry should be contained within the bounding box defined by lower_bound and upper_bound.Default is [1000, 1000, 1000]
+--targetDir: Output folder
+--generateIndex: Whether to generate encoded respresentation for each single annotation and save it in a separate file. It will be used by Neuroglancer when selecting or hovering over an annotation. Default is false.
     `
     const args = parseParams(process.argv.slice(2), helpInfo, true);
     if(JSON.stringify(args) === "{}" ) {
