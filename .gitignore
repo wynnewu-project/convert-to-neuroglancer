@@ -1,2 +1,9 @@
-node_modules
+# nodejs
+node_modules/
 package-lock.json
+pnpm-lock.json
+
+# python
+__pycache__/
+*.py[oc]
+.venv/
