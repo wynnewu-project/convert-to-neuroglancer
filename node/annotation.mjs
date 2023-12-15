@@ -118,7 +118,6 @@ export class Annotation {
         }
         rawData.set(count, { 
           id: count,
-          paramsCount: annotation.length,
           annotation: this.parseAnnotation(annotation)
         });
       }
@@ -134,7 +133,6 @@ export class Annotation {
       const annotation = line.split(/[,\s|\t;]/).map(x => Number(x))
       rawData.set(count, { 
         id: count,
-        paramsCount: annotation.length,
         annotation: this.parseAnnotation(annotation)
       });
     }
@@ -206,8 +204,9 @@ export class Annotation {
     if(this.generateIndex) {
       const byIdDir = `${dirPath}/by_id`;
       await makeDir(byIdDir)
-      for(let annotation of annotations.values()) {
-        await writeFile(`${byIdDir}/${annotation.id}`, this.encodingAnnotationIndex(annotation))
+      for(let item of annotations.values()) {
+        const { id, annotation } = item;
+        await writeFile(`${byIdDir}/${id}`, this.encodingAnnotationIndex(annotation))
       }
     }
 
