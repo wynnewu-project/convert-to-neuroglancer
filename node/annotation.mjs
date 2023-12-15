@@ -196,7 +196,7 @@ export class Annotation {
     await this.getRawData(extname, annotations);
     const encodedAnnotations = this.encodingAnnotation(annotations);
 
-    const dirPath = `${cwd()}/${this.targetDir ?? `annotations_${this.type}`}`;
+    const dirPath = this.targetDir?.startsWith("/") ? this.targetDir : `${cwd()}/${this.targetDir ?? `annotations_${this.type}`}`;
     const spatial0Dir = `${dirPath}/spatial0`;
     await makeDir(spatial0Dir);
     writeFile(`${spatial0Dir}/0_0_0`, encodedAnnotations);
