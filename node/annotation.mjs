@@ -184,14 +184,18 @@ export class Annotation {
     return dv;
   }
 
-  async writeToPrecomputed() {
-    const annotations = new Map();
-    const extname = path.extname(this.infoFile);
+  async getRawData(extname, annotations) {
     if(extname === ".xlsx" || extname === ".xls") {
       await this.getRawDataFromExcel(annotations);
     } else {
       await this.getRawDataFromText(annotations);
     }
+  }
+
+  async writeToPrecomputed() {
+    const annotations = new Map();
+    const extname = path.extname(this.infoFile);
+    await this.getRawData(extname, annotations);
     const encodedAnnotations = this.encodingAnnotation(annotations);
 
     const dirPath = `${cwd()}/${this.targetDir ?? `annotations_${this.type}`}`;
