@@ -15,16 +15,17 @@ export class ConeAnnotations extends Annotation {
   async getRawData(extname, annotations) {
     if(extname === ".swc") {
       const file = await open(this.infoFile);
+      const pointMap = new Map();
       for await (const line of file.readLines()) {
         if(line) {
           const [index, reserve, x, y, z, r, root]= line.split(" ").map(x => Number(x))
-          if(root === -1) {
-            annotations.set(index, { id: index, annotation: [x, y, z, r] });
-          } else {
-            const basic = annotations.get(root);
-            annotations.set(root, {
-              ...basic,
-              annotation: this.parseAnnotation([ ...basic.annotation, x, y, z, r ])
+          pointMap.set(index, [x, y, z, r] );
+
+          if(root !== -1) {
+            const base = pointMap.get(root);
+            annotations.set(annotations.size, {
+              id: annotations.size,
+              annotation: this.parseAnnotation([ ...base, x, y, z, r ])
             })
           }
         }
